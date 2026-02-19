@@ -21,6 +21,14 @@ const LANDING_RULES = `LANDING PAGE RULES
 - Return max 4 micro-FAQs.
 - Do not recommend keywords or campaigns for other practice areas.`;
 
+const FIRM_PROFILE_RULES = `FIRM PROFILE RULES
+- Return strict JSON matching the FirmProfile schema.
+- Include trustSignals, attorneys, processStatements, differentiators, and doNotSay keys even if empty.
+- Every claim must include a source with url and snippet. Snippet must be a short verbatim excerpt from provided pages.
+- If you cannot cite a claim from the provided pages, omit it.
+- For reviews rating/count, include sources if rating/count is present.
+- For attorneys, include credentialLines array (empty allowed) and sources array (with url + snippet).`;
+
 const ADS_RULES = `ADS RULES
 - You are a Google Ads copy specialist.
 - Hard limits: Headline 30, Description 90, Path 1 15, Path 2 15, Sitelink title 25, sitelink description 35, Callout 25.
@@ -190,6 +198,159 @@ function normalizeFirmProfile(input: unknown): FirmProfile {
   return firmProfileSchema.parse(normalized);
 }
 
+function looksBinary(text: string): boolean {
+  const sample = text.slice(0, 200);
+  if (/PNG|IHDR|JFIF|EXIF|%PDF/i.test(sample)) return true;
+  return false;
+}
+
+function scoreProfilePage(url: string): number {
+  const lower = url.toLowerCase();
+  if (lower.includes("/attorney") || lower.includes("/attorneys")) return 6;
+  if (lower.includes("/about")) return 5;
+  if (lower.includes("/review") || lower.includes("/testimonial")) return 5;
+  if (lower.includes("/case-result")) return 4;
+  if (lower.includes("/location")) return 4;
+  if (lower.includes("/contact")) return 4;
+  if (lower.includes("/practice")) return 3;
+  return 1;
+}
+
+function trimExtractedText(text: string, maxChars = 4500): string {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= maxChars) return cleaned;
+  return cleaned.slice(0, maxChars);
+}
+
+function preparePagesForProfile(pages: CrawledPage[]): CrawledPage[] {
+  return pages
+    .filter((page) => page.extractedText && !looksBinary(page.extractedText))
+    .map((page) => ({
+      ...page,
+      extractedText: trimExtractedText(page.extractedText)
+    }))
+    .map((page) => ({ page, score: scoreProfilePage(page.url) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map((item) => item.page);
+}
+
+function snippetAround(text: string, index: number, radius = 120): string {
+  const start = Math.max(0, index - radius);
+  const end = Math.min(text.length, index + radius);
+  return text.slice(start, end).trim();
+}
+
+function buildFallbackProfile(pages: CrawledPage[]): FirmProfile {
+  const trustSignals: FirmProfile["trustSignals"] = {
+    reviews: { rating: null, count: null, sources: [] },
+    awards: [],
+    memberships: []
+  };
+  const attorneys: FirmProfile["attorneys"] = [];
+  const differentiators: FirmProfile["differentiators"] = [];
+  const processStatements: FirmProfile["processStatements"] = [];
+  const doNotSay: FirmProfile["doNotSay"] = [];
+
+  for (const page of pages) {
+    const text = page.extractedText;
+    const lower = text.toLowerCase();
+
+    if (!trustSignals.reviews.rating) {
+      const ratingMatch = text.match(/\b([3-5]\.\d)\s*stars?\b/i);
+      if (ratingMatch?.[1]) {
+        trustSignals.reviews.rating = Number(ratingMatch[1]);
+        trustSignals.reviews.sources.push({ url: page.url, snippet: snippetAround(text, ratingMatch.index ?? 0) });
+      }
+    }
+
+    if (!trustSignals.reviews.count) {
+      const countMatch =
+        text.match(/\b(\d{2,4})\s*\+?\s*Five-Star Reviews\b/i) ||
+        text.match(/\bbased on\s+(\d{2,4})\s+Ratings\b/i) ||
+        text.match(/\b(\d{2,4})\s+Ratings\b/i) ||
+        text.match(/\b(\d{2,4})\s+reviews?\b/i);
+      if (countMatch?.[1]) {
+        trustSignals.reviews.count = Number(countMatch[1]);
+        trustSignals.reviews.sources.push({ url: page.url, snippet: snippetAround(text, countMatch.index ?? 0) });
+      }
+    }
+
+    if (attorneys.length === 0 && lower.includes("attorneys")) {
+      const startIdx = lower.indexOf("attorneys");
+      const slice = text.slice(startIdx, startIdx + 400);
+      const cut = slice.split(/Locations|Resources|Practice Areas/i)[0] ?? slice;
+      const rawNames = cut
+        .replace(/attorneys/i, "")
+        .replace(/\s+/g, " ")
+        .split(/Esq\.|Attorney|\n/gi)
+        .map((item) => item.replace(/[,–-]+/g, " ").trim())
+        .filter((item) => item.split(" ").length >= 2);
+
+      for (const name of rawNames.slice(0, 8)) {
+        attorneys.push({
+          name,
+          credentialLines: [],
+          sources: [{ url: page.url, snippet: snippetAround(text, text.indexOf(name)) }]
+        });
+      }
+    }
+
+    if (differentiators.length === 0 && /five-star reviews/i.test(text)) {
+      const match = text.match(/\b(\d{2,4}\+?)\s*Five-Star Reviews\b/i);
+      if (match?.[0]) {
+        differentiators.push({
+          id: "usp_reviews",
+          claim: match[0],
+          type: "other",
+          isGeneric: false,
+          isVerified: true,
+          source: { url: page.url, snippet: snippetAround(text, match.index ?? 0) }
+        });
+      }
+    }
+
+    if (differentiators.length < 2 && /multiple|locations|offices/i.test(text)) {
+      const match = text.match(/(Kendall|Miami|Coral Gables|Fort Lauderdale|Pembroke Pines|Miami Lakes).{0,120}/i);
+      if (match?.[0]) {
+        differentiators.push({
+          id: `usp_geo_${differentiators.length + 1}`,
+          claim: "Multiple South Florida office locations",
+          type: "geography",
+          isGeneric: false,
+          isVerified: true,
+          source: { url: page.url, snippet: snippetAround(text, match.index ?? 0) }
+        });
+      }
+    }
+
+    if (processStatements.length === 0 && /free case evaluation|consultation/i.test(lower)) {
+      const match = text.match(/free case evaluation|free consultation/i);
+      if (match?.[0]) {
+        processStatements.push({
+          claim: match[0],
+          source: { url: page.url, snippet: snippetAround(text, match.index ?? 0) }
+        });
+      }
+    }
+
+    if (attorneys.length && differentiators.length >= 2 && trustSignals.reviews.sources.length) {
+      break;
+    }
+  }
+
+  const profile: FirmProfile = {
+    brandVoice: {},
+    trustSignals,
+    attorneys,
+    processStatements,
+    differentiators,
+    doNotSay
+  };
+
+  return firmProfileSchema.parse(profile);
+}
+
 function sanitizeProfileForGeneration(profile: FirmProfile, selected: SelectedUsps): FirmProfile {
   const selectedIds = new Set<string>();
   if (selected.primary?.id) selectedIds.add(selected.primary.id);
@@ -220,7 +381,7 @@ function parseJsonFromText(text: string): unknown {
 
 function getModeSuffix(mode: "FIRM_PROFILE_EXTRACT" | "LANDING_PAGE" | "ADS"): string {
   if (mode === "FIRM_PROFILE_EXTRACT") {
-    return "";
+    return `\n\n${FIRM_PROFILE_RULES}`;
   }
   if (mode === "ADS") {
     return `\n\n${ADS_RULES}`;
@@ -426,11 +587,12 @@ function formatUspsForPrompt(profile: FirmProfile, selected: SelectedUsps): stri
 }
 
 export async function profileFromCrawledPages(firmDomain: string, pages: CrawledPage[]): Promise<FirmProfile> {
+  const preparedPages = preparePagesForProfile(pages);
   const prompt = [
     "MODE=FIRM_PROFILE_EXTRACT",
     `Firm domain: ${firmDomain}`,
     "Input: crawledPages[]",
-    `Pages JSON: ${JSON.stringify(pages)}`,
+    `Pages JSON: ${JSON.stringify(preparedPages)}`,
     "Return strict FirmProfile JSON matching schema. Use empty arrays/objects when data is missing."
   ].join("\n\n");
 
@@ -439,14 +601,29 @@ export async function profileFromCrawledPages(firmDomain: string, pages: Crawled
     `MODE=FIRM_PROFILE_EXTRACT\nReturn ONLY JSON that matches the FirmProfile schema. ${reason}\nPrevious output:\n${badText}`;
 
   const firstPass = await callOpenAi(systemPrompt, prompt);
+  const finalize = (payload: unknown): FirmProfile => {
+    const normalized = normalizeFirmProfile(payload);
+    const hasSignals =
+      normalized.trustSignals.reviews.sources.length > 0 ||
+      normalized.trustSignals.awards.length > 0 ||
+      normalized.trustSignals.memberships.length > 0 ||
+      normalized.attorneys.length > 0 ||
+      normalized.processStatements.length > 0 ||
+      normalized.differentiators.length > 0;
+    if (!hasSignals) {
+      return buildFallbackProfile(preparedPages);
+    }
+    return normalized;
+  };
+
   try {
-    return normalizeFirmProfile(parseJsonFromText(firstPass));
+    return finalize(parseJsonFromText(firstPass));
   } catch (error) {
     const repaired = await callOpenAi(
       systemPrompt,
       repairPrompt(firstPass, error instanceof Error ? error.message : "Invalid JSON output.")
     );
-    return normalizeFirmProfile(parseJsonFromText(repaired));
+    return finalize(parseJsonFromText(repaired));
   }
 }
 
