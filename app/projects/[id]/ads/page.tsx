@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -31,15 +31,15 @@ export default function AdsPage(): JSX.Element {
   const [pack, setPack] = useState<AdsPack | null>(null);
   const [violations, setViolations] = useState<string[]>([]);
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     const response = await fetch(`/api/projects/${id}/ads`);
     const payload = (await response.json()) as { pack?: AdsPack };
     if (payload.pack) setPack(payload.pack);
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   async function generate(autoFix = false): Promise<void> {
     const response = await fetch(`/api/projects/${id}/ads`, {

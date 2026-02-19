@@ -180,7 +180,7 @@ function normalizeAdsCounts(pack: AdsPack): AdsPack {
   return copy;
 }
 
-function assertLandingSchema(input: any): void {
+function assertLandingSchema(input: LandingPagePack): void {
   if (!toSectionOrderRecord(input.landingPage?.sections)) {
     throw new Error("Landing page sections are not in required shape/order");
   }

@@ -1,7 +1,7 @@
 import dns from "node:dns/promises";
 import { load } from "cheerio";
 import { canonicalUrl, normalizeText, stripHtml } from "@/lib/utils";
-import { CrawledPage, CrawlConfig, Firm } from "@/lib/types";
+import { CrawledPage, Firm } from "@/lib/types";
 
 const ALLOWED_SCHEMES = ["http:", "https:"] as const;
 const CRAWL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;

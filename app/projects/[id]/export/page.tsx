@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -24,17 +24,17 @@ export default function ExportPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const [payload, setPayload] = useState<ExportPayload | null>(null);
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     const response = await fetch(`/api/projects/${id}/export`);
     const data = (await response.json()) as ExportPayload | { error: string };
     if (response.ok) {
       setPayload(data as ExportPayload);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   function download(name: string, content: string): void {
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });

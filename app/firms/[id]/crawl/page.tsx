@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,16 +33,16 @@ export default function FirmCrawlPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     const response = await fetch(`/api/firms/${id}`);
     const payload = (await response.json()) as { firm: Firm };
     if (!response.ok) return;
     setFirm(payload.firm);
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   async function saveConfig(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
