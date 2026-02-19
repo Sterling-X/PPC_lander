@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +68,7 @@ export default function ProjectLandingPage(): JSX.Element {
   const [mode, setMode] = useState<EditMode>("idle");
   const [statusText, setStatusText] = useState("");
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     const response = await fetch(`/api/projects/${id}`);
     const payload = (await response.json()) as { project: Project };
     if (!response.ok) return;
@@ -85,11 +85,11 @@ export default function ProjectLandingPage(): JSX.Element {
     }
     setSections(sectionForm);
     setFaqs([...nextPack.landingPage.sections.microFaqs].slice(0, 4));
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   function syncSection(section: string, field: keyof SectionForm, value: string): void {
     setSections((current) => ({

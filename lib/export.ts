@@ -1,13 +1,13 @@
 import { toCSVRow } from "@/lib/utils";
-import { LandingPagePack, AdsPack } from "@/lib/types";
+import { LandingPagePack, AdsPack, LandingPageSectionKey } from "@/lib/types";
 
-export function exportLandingCsv(pack: LandingPagePack, projectName: string): string {
+export function exportLandingCsv(pack: LandingPagePack): string {
   const lines: string[] = [];
 
   lines.push(toCSVRow(["Section", "Headline", "Subhead", "Body"]));
   const order = ["hero", "problem", "types", "guide", "plan", "proof", "objections", "close"];
   for (const key of order) {
-    const section = pack.landingPage.sections[key as keyof typeof pack.landingPage.sections] as any;
+    const section = pack.landingPage.sections[key as LandingPageSectionKey];
     lines.push(toCSVRow([key, section.headline, section.subhead || "", section.body]));
   }
 

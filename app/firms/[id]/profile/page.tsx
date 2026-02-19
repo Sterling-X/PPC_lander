@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
@@ -31,15 +31,15 @@ export default function FirmProfilePage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const [firm, setFirm] = useState<Firm | null>(null);
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     const response = await fetch(`/api/firms/${id}`);
     const payload = (await response.json()) as { firm: Firm };
     if (response.ok) setFirm(payload.firm);
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   return (
     <div className="grid gap-6">

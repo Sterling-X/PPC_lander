@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { createFirm, listFirms, seedDemoFirmAndProject } from "@/lib/storage";
 import { firmInputSchema } from "@/lib/contracts";
-
-const seedQuerySchema = z.object({
-  action: z.literal("seed").optional()
-});
 
 export async function GET(): Promise<NextResponse> {
   const firms = await listFirms();

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -43,7 +43,7 @@ export default function FirmUspPage(): JSX.Element {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  function computeRankedUspCandidates(profile?: Firm["firmProfile"]): void {
+  const computeRankedUspCandidates = useCallback((profile?: Firm["firmProfile"]): void => {
     if (!profile?.differentiators) {
       setRanked([]);
       return;
@@ -66,9 +66,9 @@ export default function FirmUspPage(): JSX.Element {
     ).sort((a, b) => b.score - a.score);
 
     setRanked(rankedCandidates);
-  }
+  }, [practiceArea]);
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     const response = await fetch(`/api/firms/${id}`);
     const payload = (await response.json()) as { firm?: Firm };
     if (!response.ok || !payload.firm) return;
@@ -79,7 +79,7 @@ export default function FirmUspPage(): JSX.Element {
     setSupporting(next.uspSelection?.chosenSupportingUspIds ?? []);
     setBlocked(next.uspSelection?.blockedUspIds ?? []);
     computeRankedUspCandidates(next.firmProfile);
-  }
+  }, [computeRankedUspCandidates, id]);
 
   useEffect(() => {
     if (!firm?.firmProfile) {
@@ -88,11 +88,11 @@ export default function FirmUspPage(): JSX.Element {
     }
 
     computeRankedUspCandidates(firm.firmProfile);
-  }, [practiceArea, firm]);
+  }, [computeRankedUspCandidates, firm]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   function isSupporting(id: string): boolean {
     return supporting.includes(id);

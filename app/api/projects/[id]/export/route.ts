@@ -28,7 +28,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   }
 
   const markdown = exportLandingMarkdown(landing.landingPage.titleTag, landing.landingPage.metaDescription, landing.landingPage.sections);
-  const landingCsv = exportLandingCsv(landing, "landing-page");
+  const landingCsv = exportLandingCsv(landing);
   const landingKeywordCsv = exportLandingCsvWithMap(landing);
   const adsHeadlinesCsv = exportRsaHeadlinesCsv(ads);
   const adsDescriptionsCsv = exportRsaDescriptionsCsv(ads);
