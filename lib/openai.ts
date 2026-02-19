@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CrawledPage, FirmProfile, KeywordReport, LandingPagePack, Project, AdsPack } from "@/lib/types";
+import { CrawledPage, FirmProfile, KeywordReport, LandingPagePack, Project, AdsPack, SourceRef } from "@/lib/types";
 import { firmProfileSchema, landingSchema, adsSchema } from "@/lib/contracts";
 
 const REQUIRED_LANDING_FIELDS = ["consultationOffer", "callbackCommitment", "phone"] as const;
@@ -41,6 +41,154 @@ type LandingInputSection = {
   subhead?: string;
   bullets?: string[];
 };
+
+const DIFFERENTIATOR_TYPES = new Set([
+  "niche",
+  "speed",
+  "experience",
+  "pricing",
+  "approach",
+  "availability",
+  "geography",
+  "other"
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function asNumberOrNull(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeUrl(value: unknown): string | null {
+  const raw = asTrimmedString(value);
+  if (!raw) return null;
+  try {
+    return new URL(raw).toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeSourceRef(value: unknown): SourceRef | null {
+  if (!isRecord(value)) return null;
+  const url = normalizeUrl(value.url);
+  const snippet = asTrimmedString(value.snippet);
+  if (!url || !snippet) return null;
+  return { url, snippet };
+}
+
+function normalizeSourceRefs(value: unknown): SourceRef[] {
+  if (!Array.isArray(value)) return [];
+  const normalized: SourceRef[] = [];
+  for (const entry of value) {
+    const source = normalizeSourceRef(entry);
+    if (source) normalized.push(source);
+  }
+  return normalized;
+}
+
+function normalizeClaimList(value: unknown): Array<{ claim: string; source: SourceRef }> {
+  if (!Array.isArray(value)) return [];
+  const normalized: Array<{ claim: string; source: SourceRef }> = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const claim = asTrimmedString(entry.claim);
+    const source = normalizeSourceRef(entry.source);
+    if (!claim || !source) continue;
+    normalized.push({ claim, source });
+  }
+  return normalized;
+}
+
+function normalizeRuleList(value: unknown): Array<{ rule: string; source: SourceRef }> {
+  if (!Array.isArray(value)) return [];
+  const normalized: Array<{ rule: string; source: SourceRef }> = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const rule = asTrimmedString(entry.rule);
+    const source = normalizeSourceRef(entry.source);
+    if (!rule || !source) continue;
+    normalized.push({ rule, source });
+  }
+  return normalized;
+}
+
+function normalizeAttorneys(value: unknown): FirmProfile["attorneys"] {
+  if (!Array.isArray(value)) return [];
+  const normalized: FirmProfile["attorneys"] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const name = asTrimmedString(entry.name);
+    const sources = normalizeSourceRefs(entry.sources);
+    if (!name || sources.length === 0) continue;
+    const credentialLines = Array.isArray(entry.credentialLines)
+      ? entry.credentialLines.map(asTrimmedString).filter((item): item is string => Boolean(item))
+      : [];
+    normalized.push({ name, credentialLines, sources });
+  }
+  return normalized;
+}
+
+function normalizeDifferentiators(value: unknown): FirmProfile["differentiators"] {
+  if (!Array.isArray(value)) return [];
+  const normalized: FirmProfile["differentiators"] = [];
+  let fallbackId = 1;
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const claim = asTrimmedString(entry.claim);
+    const source = normalizeSourceRef(entry.source);
+    if (!claim || !source) continue;
+    const id = asTrimmedString(entry.id) ?? `usp_${fallbackId++}`;
+    const rawType = asTrimmedString(entry.type);
+    const type = rawType && DIFFERENTIATOR_TYPES.has(rawType) ? (rawType as FirmProfile["differentiators"][number]["type"]) : "other";
+    const isGeneric = typeof entry.isGeneric === "boolean" ? entry.isGeneric : false;
+    const isVerified = typeof entry.isVerified === "boolean" ? entry.isVerified : true;
+    normalized.push({ id, claim, type, isGeneric, isVerified, source });
+  }
+  return normalized;
+}
+
+function normalizeTrustSignals(value: unknown): FirmProfile["trustSignals"] {
+  const root = isRecord(value) ? value : {};
+  const reviewsRaw = isRecord(root.reviews) ? root.reviews : {};
+
+  return {
+    reviews: {
+      rating: asNumberOrNull(reviewsRaw.rating),
+      count: asNumberOrNull(reviewsRaw.count),
+      sources: normalizeSourceRefs(reviewsRaw.sources)
+    },
+    awards: normalizeClaimList(root.awards),
+    memberships: normalizeClaimList(root.memberships)
+  };
+}
+
+function normalizeFirmProfile(input: unknown): FirmProfile {
+  const root = isRecord(input) ? input : {};
+  const normalized: FirmProfile = {
+    brandVoice: isRecord(root.brandVoice) ? root.brandVoice : {},
+    trustSignals: normalizeTrustSignals(root.trustSignals),
+    attorneys: normalizeAttorneys(root.attorneys),
+    processStatements: normalizeClaimList(root.processStatements),
+    differentiators: normalizeDifferentiators(root.differentiators),
+    doNotSay: normalizeRuleList(root.doNotSay)
+  };
+
+  return firmProfileSchema.parse(normalized);
+}
 
 function sanitizeProfileForGeneration(profile: FirmProfile, selected: SelectedUsps): FirmProfile {
   const selectedIds = new Set<string>();
@@ -283,11 +431,23 @@ export async function profileFromCrawledPages(firmDomain: string, pages: Crawled
     `Firm domain: ${firmDomain}`,
     "Input: crawledPages[]",
     `Pages JSON: ${JSON.stringify(pages)}`,
-    "Return strict FirmProfile JSON matching schema."
+    "Return strict FirmProfile JSON matching schema. Use empty arrays/objects when data is missing."
   ].join("\n\n");
 
-  const parsed = await validateWithRetry("FIRM_PROFILE_EXTRACT", prompt, firmProfileSchema);
-  return parsed;
+  const systemPrompt = getModePrompt("FIRM_PROFILE_EXTRACT");
+  const repairPrompt = (badText: string, reason: string) =>
+    `MODE=FIRM_PROFILE_EXTRACT\nReturn ONLY JSON that matches the FirmProfile schema. ${reason}\nPrevious output:\n${badText}`;
+
+  const firstPass = await callOpenAi(systemPrompt, prompt);
+  try {
+    return normalizeFirmProfile(parseJsonFromText(firstPass));
+  } catch (error) {
+    const repaired = await callOpenAi(
+      systemPrompt,
+      repairPrompt(firstPass, error instanceof Error ? error.message : "Invalid JSON output.")
+    );
+    return normalizeFirmProfile(parseJsonFromText(repaired));
+  }
 }
 
 export async function generateLandingPageFromInputs(
