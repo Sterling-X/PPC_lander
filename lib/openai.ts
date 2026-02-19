@@ -24,8 +24,8 @@ const LANDING_RULES = `LANDING PAGE RULES
 const ADS_RULES = `ADS RULES
 - You are a Google Ads copy specialist.
 - Hard limits: Headline 30, Description 90, Path 1 15, Path 2 15, Sitelink title 25, sitelink description 35, Callout 25.
-- Pinning: H1 must be exactly one pinned headline.
-- Return structured output in tables and include a launch checklist.
+- Pinning: H1 must be exactly one pinned headline and it must be the keyword-match line. H2 must be exactly one pinned headline and it must be proof or a verified differentiator. All other headlines must be unpinned.
+- Return structured JSON that maps cleanly into tables and include a launch checklist at the end.
 - Prefer using verified USP claims for H2 and proof lines.`;
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
@@ -41,6 +41,23 @@ type LandingInputSection = {
   subhead?: string;
   bullets?: string[];
 };
+
+function sanitizeProfileForGeneration(profile: FirmProfile, selected: SelectedUsps): FirmProfile {
+  const selectedIds = new Set<string>();
+  if (selected.primary?.id) selectedIds.add(selected.primary.id);
+  for (const usp of selected.support) {
+    if (usp?.id) selectedIds.add(usp.id);
+  }
+
+  const safeDifferentiators = profile.differentiators.filter(
+    (item) => selectedIds.has(item.id) && item.isVerified && Boolean(item.source?.url) && Boolean(item.source?.snippet)
+  );
+
+  return {
+    ...profile,
+    differentiators: safeDifferentiators
+  };
+}
 
 function parseJsonFromText(text: string): unknown {
   const trimmed = text.trim();
@@ -299,7 +316,7 @@ export async function generateLandingPageFromInputs(
     })}`,
     `Keyword CSV text (${keywordCsv.fileName ?? "upload.csv"}): ${keywordCsv.text}`,
     `Selected verified USPs:\n${formatUspsForPrompt(firmProfile, selectedUsps)}`,
-    `Source firm profile: ${JSON.stringify(firmProfile)}`,
+    `Source firm profile: ${JSON.stringify(sanitizeProfileForGeneration(firmProfile, selectedUsps))}`,
     "Return strict JSON matching schema only."
   ].join("\n\n");
 
@@ -367,6 +384,7 @@ export async function generateAdsFromLanding(
     `Approved landing page sections: ${JSON.stringify(pack.landingPage.sections)}`,
     `Keyword CSV text: ${keywordCsv.text}`,
     `Verified selected USP context:\n${formatUspsForPrompt(firmProfile, selectedUsps)}`,
+    `Source firm profile: ${JSON.stringify(sanitizeProfileForGeneration(firmProfile, selectedUsps))}`,
     "Return strict ADS JSON matching schema only."
   ].join("\n\n");
 
@@ -417,23 +435,27 @@ export function autoFixAdViolations(pack: AdsPack): AdsPack {
     }
 
     group.rsa.headlines.forEach((headline, index) => {
-      if (index === 0) headline.pin = "H1";
+      headline.pin = index === 0 ? "H1" : null;
     });
 
-    const firstProofLine = group.rsa.headlines.find((item) => item.text.toLowerCase().includes("proof") || item.text.toLowerCase().includes("award"));
-    if (firstProofLine) firstProofLine.pin = "H2";
+    const proofCandidate = group.rsa.headlines.find(
+      (item, index) => index !== 0 && /proof|award|review|result|recognition|experience|years/i.test(item.text)
+    );
+    const fallbackCandidate = group.rsa.headlines.find((_, index) => index !== 0);
+    const h2Target = proofCandidate ?? fallbackCandidate;
 
-    const h2Count = group.rsa.headlines.filter((item) => item.pin === "H2").length;
-    if (h2Count > 1) {
-      let seen = false;
-      for (const headline of group.rsa.headlines) {
-        if (headline.pin !== "H2") continue;
-        if (!seen) {
-          seen = true;
-        } else {
-          headline.pin = null;
-        }
+    if (h2Target) {
+      h2Target.pin = "H2";
+    }
+
+    let seenH2 = false;
+    for (const headline of group.rsa.headlines) {
+      if (headline.pin !== "H2") continue;
+      if (!seenH2) {
+        seenH2 = true;
+        continue;
       }
+      headline.pin = null;
     }
   }
 

@@ -56,14 +56,14 @@ export default function AdsPage(): JSX.Element {
       if (payload.project?.artifacts?.adsPack) {
         setPack(payload.project.artifacts.adsPack);
       }
-      if (!payload.violations) {
+      if (!payload.violations || payload.violations.length === 0) {
         setViolations([]);
       }
       return;
     }
 
-      setViolations([payload.error ?? "Failed to generate ads"]);
-    }
+    setViolations([payload.error ?? "Failed to generate ads"]);
+  }
 
   return (
     <div className="grid gap-6">
@@ -87,95 +87,127 @@ export default function AdsPage(): JSX.Element {
           )}
 
           {!pack && <p className="mt-2 text-sm text-slate-600">No ads generated yet.</p>}
-            {pack &&
-              pack.adGroups.map((group) => (
-                <div key={group.name} className="mt-4 rounded-md border border-slate-200 p-3">
-                  <h3 className="font-semibold">{group.name}</h3>
-                  <div className="mt-2 text-sm">
-                    <p
-                      className={
-                        group.rsa.path1.length > 15 || group.rsa.path2.length > 15 ? "text-amber-700" : "text-slate-600"
-                      }
-                    >
-                      Path: /{group.rsa.path1}/{group.rsa.path2}
-                    </p>
-                  </div>
-                  <h4 className="mt-2 font-medium">Headlines</h4>
-                  <DataTable className="mt-1">
-                    <thead>
-                      <Tr>
-                        <Th>Text</Th>
-                        <Th>Pin</Th>
-                        <Th>Characters</Th>
-                      </Tr>
-                    </thead>
-                    <tbody>
-                      {group.rsa.headlines.map((headline, index) => (
-                        <Tr key={`${headline.text}-${index}`}>
-                          <Td>{headline.text}</Td>
-                          <Td>{headline.pin ?? ""}</Td>
-                          <Td className={headline.charCount > 30 ? "text-amber-700" : ""}>{headline.charCount}</Td>
-                        </Tr>
-                      ))}
-                    </tbody>
-                  </DataTable>
-                  <h4 className="mt-2 font-medium">Descriptions</h4>
-                  <DataTable className="mt-1">
-                    <thead>
-                      <Tr>
-                        <Th>Text</Th>
-                        <Th>Characters</Th>
-                      </Tr>
-                    </thead>
-                    <tbody>
-                      {group.rsa.descriptions.map((desc, index) => (
-                        <Tr key={`${desc.text}-${index}`}>
-                          <Td>{desc.text}</Td>
-                          <Td className={desc.charCount > 90 ? "text-amber-700" : ""}>{desc.charCount}</Td>
-                        </Tr>
-                      ))}
-                    </tbody>
-                  </DataTable>
-
-                  <h4 className="mt-2 font-medium">Sitelinks</h4>
-                  <DataTable className="mt-1">
-                    <thead>
-                      <Tr>
-                        <Th>Title</Th>
-                        <Th>Description 1</Th>
-                        <Th>Description 2</Th>
-                        <Th>Final URL</Th>
-                      </Tr>
-                    </thead>
-                    <tbody>
-                      {group.extensions.sitelinks.map((s, index) => (
-                        <Tr key={`${s.title}-${index}`}>
-                          <Td className={s.title.length > 25 ? "text-amber-700" : ""}>{s.title}</Td>
-                          <Td className={s.desc1.length > 35 ? "text-amber-700" : ""}>{s.desc1}</Td>
-                          <Td className={s.desc2.length > 35 ? "text-amber-700" : ""}>{s.desc2}</Td>
-                          <Td>{s.finalUrl}</Td>
-                        </Tr>
-                      ))}
-                    </tbody>
-                  </DataTable>
-
-                  <h4 className="mt-2 font-medium">Callouts</h4>
-                  <DataTable className="mt-1">
-                    <thead>
-                      <Tr>
-                        <Th>Text</Th>
-                      </Tr>
-                    </thead>
-                    <tbody>
-                      {group.extensions.callouts.map((callout, index) => (
-                        <Tr key={`${callout.text}-${index}`}>
-                          <Td className={callout.text.length > 25 ? "text-amber-700" : ""}>{callout.text}</Td>
-                        </Tr>
-                      ))}
-                    </tbody>
-                  </DataTable>
+          {pack &&
+            pack.adGroups.map((group) => (
+              <div key={group.name} className="mt-4 rounded-md border border-slate-200 p-3">
+                <h3 className="font-semibold">{group.name}</h3>
+                <div className="mt-2 text-sm">
+                  <p className={group.rsa.path1.length > 15 || group.rsa.path2.length > 15 ? "text-amber-700" : "text-slate-600"}>
+                    Path: /{group.rsa.path1}/{group.rsa.path2}
+                  </p>
                 </div>
-              ))}
+                <h4 className="mt-2 font-medium">Headlines</h4>
+                <DataTable className="mt-1">
+                  <thead>
+                    <Tr>
+                      <Th>Text</Th>
+                      <Th>Pin</Th>
+                      <Th>Characters</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {group.rsa.headlines.map((headline, index) => (
+                      <Tr key={`${headline.text}-${index}`}>
+                        <Td>{headline.text}</Td>
+                        <Td>{headline.pin ?? ""}</Td>
+                        <Td className={headline.charCount > 30 ? "text-amber-700" : ""}>{headline.charCount}</Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+                <h4 className="mt-2 font-medium">Descriptions</h4>
+                <DataTable className="mt-1">
+                  <thead>
+                    <Tr>
+                      <Th>Text</Th>
+                      <Th>Characters</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {group.rsa.descriptions.map((desc, index) => (
+                      <Tr key={`${desc.text}-${index}`}>
+                        <Td>{desc.text}</Td>
+                        <Td className={desc.charCount > 90 ? "text-amber-700" : ""}>{desc.charCount}</Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+
+                <h4 className="mt-2 font-medium">Sitelinks</h4>
+                <DataTable className="mt-1">
+                  <thead>
+                    <Tr>
+                      <Th>Title</Th>
+                      <Th>Description 1</Th>
+                      <Th>Description 2</Th>
+                      <Th>Final URL</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {group.extensions.sitelinks.map((s, index) => (
+                      <Tr key={`${s.title}-${index}`}>
+                        <Td className={s.title.length > 25 ? "text-amber-700" : ""}>{s.title}</Td>
+                        <Td className={s.desc1.length > 35 ? "text-amber-700" : ""}>{s.desc1}</Td>
+                        <Td className={s.desc2.length > 35 ? "text-amber-700" : ""}>{s.desc2}</Td>
+                        <Td>{s.finalUrl}</Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+
+                <h4 className="mt-2 font-medium">Callouts</h4>
+                <DataTable className="mt-1">
+                  <thead>
+                    <Tr>
+                      <Th>Text</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {group.extensions.callouts.map((callout, index) => (
+                      <Tr key={`${callout.text}-${index}`}>
+                        <Td className={callout.text.length > 25 ? "text-amber-700" : ""}>{callout.text}</Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+
+                <h4 className="mt-2 font-medium">Structured Snippets</h4>
+                <DataTable className="mt-1">
+                  <thead>
+                    <Tr>
+                      <Th>Header</Th>
+                      <Th>Values</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {group.extensions.structuredSnippets.map((snippet, index) => (
+                      <Tr key={`${snippet.header}-${index}`}>
+                        <Td>{snippet.header}</Td>
+                        <Td>{snippet.values.join(" | ")}</Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+
+                <h4 className="mt-2 font-medium">SERP Variants</h4>
+                <DataTable className="mt-1">
+                  <thead>
+                    <Tr>
+                      <Th>Title</Th>
+                      <Th>Description</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {group.serpVariants.map((variant, index) => (
+                      <Tr key={`${variant.title}-${index}`}>
+                        <Td>{variant.title}</Td>
+                        <Td>{variant.description}</Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+              </div>
+            ))}
 
           {pack && (
             <div className="mt-4">
