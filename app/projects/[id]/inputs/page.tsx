@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,6 @@ type Project = {
 
 export default function ProjectInputsPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
-  const [project, setProject] = useState<Project | null>(null);
-
   const [consultationOffer, setConsultationOffer] = useState("");
   const [callbackCommitment, setCallbackCommitment] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,12 +30,11 @@ export default function ProjectInputsPage(): JSX.Element {
   const [status, setStatus] = useState("");
   const [fileNameFromUpload, setFileNameFromUpload] = useState("");
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     const response = await fetch(`/api/projects/${id}`);
     const payload = (await response.json()) as { project: Project };
     if (!response.ok) return;
     const project = payload.project;
-    setProject(project);
 
     if (project.inputs) {
       setConsultationOffer((project.inputs as Record<string, string>).consultationOffer ?? "");
@@ -54,11 +51,11 @@ export default function ProjectInputsPage(): JSX.Element {
       setKeywordCsvText(project.keywordReport.text);
       setKeywordFileName(project.keywordReport.fileName ?? "");
     }
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();

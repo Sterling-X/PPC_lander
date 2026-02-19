@@ -6,7 +6,7 @@
       "domain": "https://www.familylawprotection.com",
       "createdAt": "2026-02-18T23:10:11.779Z",
       "crawlConfig": {
-        "maxPages": 30,
+        "maxPages": 10,
         "maxDepth": 2,
         "includePaths": [
           "/about",
@@ -217,11 +217,45 @@
         }
       ],
       "crawlErrors": [
-        "Crawl blocked: OPENAI_API_KEY missing.",
+        "Crawl blocked: [\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"object\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"trustSignals\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      0,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      0,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      1,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      1,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      2,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      2,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      3,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      3,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      4,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      4,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      5,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      5,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      6,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      6,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      7,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      7,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      8,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      8,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      9,\n      \"credentialLines\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"attorneys\",\n      9,\n      \"sources\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"processStatements\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"differentiators\"\n    ],\n    \"message\": \"Required\"\n  },\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"array\",\n    \"received\": \"undefined\",\n    \"path\": [\n      \"doNotSay\"\n    ],\n    \"message\": \"Required\"\n  }\n]",
         "If crawling fails due blocks, add high-signal URLs manually in the Crawl page and re-run.",
         "Recommended add-ons: /about, /attorneys, /team, /reviews, /testimonials, /case-results, /locations, /contact, /practice-areas/<practice-area>",
         "If robots is blocking extraction, confirm Terms/consent and re-run with a lower depth."
       ]
+    },
+    {
+      "id": "de267b70-e83c-4a9a-8740-34a7a03d50bb",
+      "name": "VDL",
+      "domain": "https://www.familylawprotection.com",
+      "createdAt": "2026-02-19T19:33:24.113Z",
+      "crawlConfig": {
+        "maxPages": 30,
+        "maxDepth": 2,
+        "includePaths": [
+          "/about",
+          "/attorneys",
+          "/team",
+          "/reviews",
+          "/testimonials",
+          "/case-results",
+          "/locations",
+          "/contact",
+          "/practice-areas"
+        ],
+        "excludePaths": [
+          "/privacy",
+          "/terms",
+          "/cookie",
+          "/careers",
+          "/careers/"
+        ]
+      },
+      "uspSelection": {
+        "chosenPrimaryUspId": null,
+        "chosenSupportingUspIds": [],
+        "blockedUspIds": []
+      },
+      "crawledPages": []
     }
   ],
   "projects": [],

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getProject, updateProject } from "@/lib/storage";
 import { projectSchema } from "@/lib/contracts";
+import { Project } from "@/lib/types";
 
 const paramsSchema = z.object({ id: z.string().min(1) });
 
@@ -22,6 +23,6 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const project = await updateProject(params.id, parsed.data as any);
+  const project = await updateProject(params.id, parsed.data as Partial<Project>);
   return NextResponse.json({ project }, { status: 200 });
 }

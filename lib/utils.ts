@@ -37,7 +37,7 @@ export function toCSVRow(fields: Array<string | number | null | undefined | bool
     .join(",");
 }
 
-export function exportLandingMarkdown(titleTag: string, meta: string, sections: Record<string, any>): string {
+export function exportLandingMarkdown(titleTag: string, meta: string, sections: LandingPagePack["landingPage"]["sections"]): string {
   const sectionOrder = ["hero", "problem", "types", "guide", "plan", "proof", "objections", "close"];
   let md = `# ${titleTag}\n\n`;
   md += `## Meta Description\n${meta}\n\n`;
@@ -64,3 +64,4 @@ export function exportLandingMarkdown(titleTag: string, meta: string, sections: 
 
   return md;
 }
+import { LandingPagePack } from "@/lib/types";
