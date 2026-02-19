@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ type Firm = {
 export default function FirmCrawlPage(): JSX.Element {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const router = useRouter();
 
   const [firm, setFirm] = useState<Firm | null>(null);
   const [practiceArea, setPracticeArea] = useState("Family Law");
@@ -87,6 +88,7 @@ export default function FirmCrawlPage(): JSX.Element {
 
     await load();
     setIsLoading(false);
+    router.push(`/firms/${id}/profile`);
   }
 
   return (
