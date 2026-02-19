@@ -235,6 +235,19 @@ function preparePagesForProfile(pages: CrawledPage[]): CrawledPage[] {
     .map((item) => item.page);
 }
 
+function preparePagesForFallback(pages: CrawledPage[]): CrawledPage[] {
+  return pages
+    .filter((page) => page.extractedText && !looksBinary(page.extractedText))
+    .map((page) => ({
+      ...page,
+      extractedText: trimExtractedText(page.extractedText, 12000)
+    }))
+    .map((page) => ({ page, score: scoreProfilePage(page.url) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 15)
+    .map((item) => item.page);
+}
+
 function snippetAround(text: string, index: number, radius = 120): string {
   const start = Math.max(0, index - radius);
   const end = Math.min(text.length, index + radius);
@@ -251,6 +264,33 @@ function buildFallbackProfile(pages: CrawledPage[]): FirmProfile {
   const differentiators: FirmProfile["differentiators"] = [];
   const processStatements: FirmProfile["processStatements"] = [];
   const doNotSay: FirmProfile["doNotSay"] = [];
+
+  const pushAward = (claim: string, source: SourceRef): void => {
+    if (trustSignals.awards.some((item) => item.claim === claim)) return;
+    trustSignals.awards.push({ claim, source });
+  };
+
+  const pushMembership = (claim: string, source: SourceRef): void => {
+    if (trustSignals.memberships.some((item) => item.claim === claim)) return;
+    trustSignals.memberships.push({ claim, source });
+  };
+
+  const pushDifferentiator = (
+    claim: string,
+    type: FirmProfile["differentiators"][number]["type"],
+    source: SourceRef,
+    isGeneric = false
+  ): void => {
+    if (differentiators.some((item) => item.claim === claim)) return;
+    differentiators.push({
+      id: `usp_${differentiators.length + 1}`,
+      claim,
+      type,
+      isGeneric,
+      isVerified: true,
+      source
+    });
+  };
 
   for (const page of pages) {
     const text = page.extractedText;
@@ -299,28 +339,18 @@ function buildFallbackProfile(pages: CrawledPage[]): FirmProfile {
     if (differentiators.length === 0 && /five-star reviews/i.test(text)) {
       const match = text.match(/\b(\d{2,4}\+?)\s*Five-Star Reviews\b/i);
       if (match?.[0]) {
-        differentiators.push({
-          id: "usp_reviews",
-          claim: match[0],
-          type: "other",
-          isGeneric: false,
-          isVerified: true,
-          source: { url: page.url, snippet: snippetAround(text, match.index ?? 0) }
-        });
+        pushDifferentiator(match[0], "other", { url: page.url, snippet: snippetAround(text, match.index ?? 0) });
       }
     }
 
-    if (differentiators.length < 2 && /multiple|locations|offices/i.test(text)) {
+    if (/multiple|locations|offices/i.test(text)) {
       const match = text.match(/(Kendall|Miami|Coral Gables|Fort Lauderdale|Pembroke Pines|Miami Lakes).{0,120}/i);
       if (match?.[0]) {
-        differentiators.push({
-          id: `usp_geo_${differentiators.length + 1}`,
-          claim: "Multiple South Florida office locations",
-          type: "geography",
-          isGeneric: false,
-          isVerified: true,
-          source: { url: page.url, snippet: snippetAround(text, match.index ?? 0) }
-        });
+        pushDifferentiator(
+          "Multiple South Florida office locations",
+          "geography",
+          { url: page.url, snippet: snippetAround(text, match.index ?? 0) }
+        );
       }
     }
 
@@ -331,6 +361,72 @@ function buildFallbackProfile(pages: CrawledPage[]): FirmProfile {
           claim: match[0],
           source: { url: page.url, snippet: snippetAround(text, match.index ?? 0) }
         });
+      }
+    }
+
+    if (/super lawyer|super lawyers/i.test(text)) {
+      const match = text.match(/super lawyer[s]?/i);
+      if (match?.[0]) {
+        pushAward("Super Lawyers recognition", { url: page.url, snippet: snippetAround(text, match.index ?? 0) });
+      }
+    }
+
+    if (/rising star/i.test(text)) {
+      const match = text.match(/rising star/i);
+      if (match?.[0]) {
+        pushAward("Rising Star recognition", { url: page.url, snippet: snippetAround(text, match.index ?? 0) });
+      }
+    }
+
+    if (/pro bono champion/i.test(text)) {
+      const match = text.match(/pro bono champion/i);
+      if (match?.[0]) {
+        pushAward("Pro Bono Champion recognition", { url: page.url, snippet: snippetAround(text, match.index ?? 0) });
+      }
+    }
+
+    if (/florida bar/i.test(text)) {
+      const match = text.match(/florida bar/i);
+      if (match?.[0]) {
+        pushMembership("Florida Bar member", { url: page.url, snippet: snippetAround(text, match.index ?? 0) });
+      }
+    }
+
+    if (/family law section/i.test(text)) {
+      const match = text.match(/family law section/i);
+      if (match?.[0]) {
+        pushMembership("Family Law Section member", { url: page.url, snippet: snippetAround(text, match.index ?? 0) });
+      }
+    }
+
+    if (/bar association/i.test(text)) {
+      const match = text.match(/(coral gables|miami-dade|dominican american).*bar association/i);
+      if (match?.[0]) {
+        pushMembership(match[0].replace(/\s+/g, " ").trim(), { url: page.url, snippet: snippetAround(text, match.index ?? 0) });
+      }
+    }
+
+    if (/bilingual|spanish/i.test(text)) {
+      const match = text.match(/bilingual|spanish/i);
+      if (match?.[0]) {
+        pushDifferentiator(
+          "Bilingual English/Spanish support",
+          "approach",
+          { url: page.url, snippet: snippetAround(text, match.index ?? 0) },
+          false
+        );
+      }
+    }
+
+    if (/founded in|since\s+20\d{2}/i.test(text)) {
+      const match = text.match(/(founded in|since)\s+(20\d{2})/i);
+      if (match?.[0]) {
+        pushDifferentiator(
+          match[0].replace(/\s+/g, " ").trim(),
+          "experience",
+          { url: page.url, snippet: snippetAround(text, match.index ?? 0) },
+          false
+        );
       }
     }
 
@@ -588,6 +684,7 @@ function formatUspsForPrompt(profile: FirmProfile, selected: SelectedUsps): stri
 
 export async function profileFromCrawledPages(firmDomain: string, pages: CrawledPage[]): Promise<FirmProfile> {
   const preparedPages = preparePagesForProfile(pages);
+  const fallbackPages = preparePagesForFallback(pages);
   const prompt = [
     "MODE=FIRM_PROFILE_EXTRACT",
     `Firm domain: ${firmDomain}`,
@@ -611,7 +708,7 @@ export async function profileFromCrawledPages(firmDomain: string, pages: Crawled
       normalized.processStatements.length > 0 ||
       normalized.differentiators.length > 0;
     if (!hasSignals) {
-      return buildFallbackProfile(preparedPages);
+      return buildFallbackProfile(fallbackPages);
     }
     return normalized;
   };
